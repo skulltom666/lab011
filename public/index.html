@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat en Tiempo Real</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+    #typing { font-style: italic; color: gray; }
+  </style>
+</head>
+<body>
+  <h2>Chat en Tiempo Real</h2>
+  <input type="text" id="room" placeholder="Sala" />
+  <button onclick="joinRoom()">Unirse</button>
+  <div id="chat"></div>
+  <div id="typing"></div>
+  <input type="text" id="message" placeholder="Escribe un mensaje..." />
+  <button onclick="sendMessage()">Enviar</button>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    const socket = io();
+    let currentRoom = '';
+
+    const chat = document.getElementById('chat');
+    const typing = document.getElementById('typing');
+    const messageInput = document.getElementById('message');
+
+    function joinRoom() {
+      const room = document.getElementById('room').value;
+      if (room) {
+        socket.emit('room:join', room);
+        currentRoom = room;
+        chat.innerHTML += `<p><em>Unido a la sala ${room}</em></p>`;
+      }
+    }
+
+    function sendMessage() {
+      const msg = messageInput.value;
+      if (msg && currentRoom) {
+        socket.emit('chat:message', { room: currentRoom, message: msg }, () => {
+          chat.innerHTML += `<p><strong>Tú:</strong> ${msg}</p>`;
+          messageInput.value = '';
+        });
+      }
+    }
+
+    messageInput.addEventListener('input', () => {
+      socket.emit('chat:typing', { room: currentRoom, user: 'Alguien está escribiendo...' });
+    });
+
+    socket.on('chat:message', (data) => {
+      if (data.room === currentRoom) {
+        chat.innerHTML += `<p><strong>Otro:</strong> ${data.message}</p>`;
+      }
+    });
+
+    socket.on('chat:typing', (data) => {
+      if (data.room === currentRoom) {
+        typing.innerText = data.user;
+        setTimeout(() => typing.innerText = '', 1000);
+      }
+    });
+
+    socket.on('room:notification', (msg) => {
+      chat.innerHTML += `<p><em>${msg}</em></p>`;
+    });
+  </script>
+</body>
+</html>
